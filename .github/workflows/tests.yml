@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0']
+    name: PHP ${{ matrix.php }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set up PHP 🐘
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php }}
+    - name: Cache Composer dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.composer/cache/files
+        key: php-{{ matrix.php }}-laravel-8.*-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: php-{{ matrix.php }}-laravel-8.*-composer-
+    - name: Copy ENV Laravel Configuration for CI
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+    - name: Install Dependencies (PHP vendors)
+      run: composer install --prefer-dist --no-interaction --no-progress --no-suggest
+    - name: Generate key
+      run: php artisan key:generate
+    - name: Execute tests (Unit and Feature tests)
+      run: php artisan test --without-tty --parallel
